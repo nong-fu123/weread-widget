@@ -14,24 +14,69 @@
   }
   body { padding: 10px 12px; display: flex; flex-direction: column; }
   .label { font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 1px; margin-bottom: 6px; flex-shrink: 0; }
-  .highlight { font-size: 13px; line-height: 1.65; color: #f0f0f0; flex: 1; overflow-y: auto; padding-left: 8px; border-left: 2px solid rgba(102,126,234,0.6); }
-  .highlight::-webkit-scrollbar { display: none; }
-  .meta { margin-top: 8px; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-between; }
-  .book-title { font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.55); line-height: 1.4; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .highlight-wrap {
+    flex: 1;
+    overflow: hidden;
+    padding-left: 8px;
+    border-left: 2px solid rgba(102,126,234,0.6);
+  }
+  .highlight {
+    font-size: 13px;
+    line-height: 1.65;
+    color: #f0f0f0;
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .meta {
+    margin-top: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .book-title {
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.4;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .date { font-size: 9px; color: rgba(255,255,255,0.3); }
-  .refresh { position: fixed; bottom: 6px; right: 6px; width: 20px; height: 20px; background: rgba(0,0,0,0.3); border: none; border-radius: 50%; color: rgba(255,255,255,0.4); font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .refresh {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    background: rgba(0,0,0,0.3);
+    border: none;
+    border-radius: 50%;
+    color: rgba(255,255,255,0.4);
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
   .refresh:active { opacity: 0.5; }
   .loading, .error { text-align: center; font-size: 12px; color: rgba(255,255,255,0.4); padding: 20px 0; }
 </style>
 </head>
 <body>
   <div class="label">📖 今日划线</div>
+  <button class="refresh" onclick="loadContent()" title="刷新">⟳</button>
   <div id="content"><div class="loading">加载中...</div></div>
   <div class="meta">
     <div id="bookTitle" class="book-title"></div>
     <div id="date" class="date"></div>
   </div>
-  <button class="refresh" onclick="loadContent()" title="刷新">⟳</button>
 <script>
 const GIST_ID = "d3b5c652a2fccce714336513e981e2eb";
 async function loadContent() {
@@ -39,11 +84,11 @@ async function loadContent() {
     const res = await fetch("https://gist.githubusercontent.com/nong-fu123/" + GIST_ID + "/raw/data.json?t=" + Date.now());
     if (!res.ok) throw new Error("fail");
     const data = await res.json();
-    document.getElementById("content").innerHTML = "<div class=\"highlight\">" + (data.highlight || "") + "</div>";
+    document.getElementById("content").innerHTML = '<div class="highlight-wrap"><div class="highlight">' + (data.highlight || "") + '</div></div>';
     document.getElementById("bookTitle").textContent = data.title + (data.author ? " · " + data.author : "");
     document.getElementById("date").textContent = data.date || "";
   } catch(e) {
-    document.getElementById("content").innerHTML = "<div class=\"error\">暂无内容</div>";
+    document.getElementById("content").innerHTML = '<div class="error">暂无内容</div>';
   }
 }
 loadContent();
