@@ -14,29 +14,73 @@
   }
   body { padding: 12px 14px; display: flex; flex-direction: column; }
   .label { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-bottom: 8px; }
+  .highlight-wrap {
+    flex: 1;
+    overflow: hidden;
+    padding-left: 8px;
+    border-left: 2px solid rgba(102,126,234,0.6);
+  }
   .highlight {
-    font-size: 13px; line-height: 1.65; color: #f0f0f0;
-    padding-left: 8px; border-left: 2px solid rgba(102,126,234,0.6);
-    display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical;
-    overflow: hidden; text-overflow: ellipsis;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #f0f0f0;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .meta {
-    margin-top: 8px; flex-shrink: 0;
-    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-top: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
   }
   .book-title {
-    font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.5);
-    max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    max-width: 75%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .date { font-size: 9px; color: rgba(255,255,255,0.25); }
+  .loading, .error {
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    padding: 20px 0;
+  }
 </style>
 </head>
 <body>
-  <div class="label">📖 今日划线</div>
-  <div class="highlight">据说，定期前来巡视的警官也对此有所察觉。哪怕有一个人积极介入，Blue没有户籍的事情就会暴露，从而可能得到保护。如此一来，海老塚就不会死，青梅案也可能不会发生了。</div>
+  <div class="label">📖 每日划线</div>
+  <div id="content"><div class="loading">加载中...</div></div>
   <div class="meta">
-    <div class="book-title">Blue · [日]叶真中显</div>
-    <div class="date">2026-04-25</div>
+    <div id="bookTitle" class="book-title"></div>
+    <div id="date" class="date"></div>
   </div>
+<script>
+async function loadContent() {
+  try {
+    const res = await fetch('history.json?t=' + Date.now());
+    if (!res.ok) throw new Error('fail');
+    const history = await res.json();
+    if (!history.length) throw new Error('empty');
+    
+    // 随机选一条
+    const item = history[Math.floor(Math.random() * history.length)];
+    
+    document.getElementById('content').innerHTML = '<div class="highlight-wrap"><div class="highlight">' + (item.highlight || '') + '</div></div>';
+    document.getElementById('bookTitle').textContent = (item.title || '') + (item.author ? ' · ' + item.author : '');
+    document.getElementById('date').textContent = item.date || '';
+  } catch(e) {
+    document.getElementById('content').innerHTML = '<div class="error">暂无内容</div>';
+  }
+}
+loadContent();
+</script>
 </body>
 </html>
