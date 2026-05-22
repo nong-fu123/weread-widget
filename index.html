@@ -10,37 +10,54 @@
     font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
     background: #0d0d0d;
     color: #d0d0d0;
-    width: 100%; height: 100%; overflow: hidden;
+    width: 100%;
+    min-height: 100vh;
   }
-  body { padding: 12px 14px; display: flex; flex-direction: column; }
-  .label { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-bottom: 8px; flex-shrink: 0; }
-  .highlight-wrap {
-    flex: 1;
-    overflow: hidden;
-    padding-left: 8px;
+  body { padding: 16px; }
+  .header {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header .count { font-size: 10px; color: rgba(255,255,255,0.25); }
+  .item {
+    padding: 12px 10px;
     border-left: 2px solid rgba(102,126,234,0.6);
+    margin-bottom: 12px;
   }
-  .highlight {
-    font-size: 13px; line-height: 1.65; color: #f0f0f0;
-    display: -webkit-box;
-    -webkit-line-clamp: 5;
-    -webkit-box-orient: vertical;
+  .item .text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #e8e8e8;
+    margin-bottom: 6px;
+  }
+  .item .meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .item .book-title {
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    max-width: 75%;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .meta { margin-top: 8px; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-between; }
-  .book-title { font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.5); max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .date { font-size: 9px; color: rgba(255,255,255,0.25); }
+  .item .date { font-size: 9px; color: rgba(255,255,255,0.2); }
   .loading, .error { text-align: center; font-size: 12px; color: rgba(255,255,255,0.4); padding: 20px 0; }
 </style>
 </head>
 <body>
-  <div class="label">📖 今日划线</div>
-  <div id="content"><div class="loading">加载中...</div></div>
-  <div class="meta">
-    <div id="bookTitle" class="book-title"></div>
-    <div id="date" class="date"></div>
+  <div class="header">
+    <span>📖 划线记录</span>
+    <span class="count" id="count"></span>
   </div>
+  <div id="content"><div class="loading">加载中...</div></div>
 <script>
 async function loadContent() {
   try {
@@ -48,16 +65,22 @@ async function loadContent() {
     if (!res.ok) throw new Error("fail");
     const history = await res.json();
     if (!history.length) throw new Error("empty");
-    const item = history[Math.floor(Math.random() * history.length)];
-    document.getElementById("content").innerHTML = '<div class="highlight-wrap"><div class="highlight">' + (item.highlight || "") + "</div></div>";
-    document.getElementById("bookTitle").textContent = item.title + (item.author ? " · " + item.author : "");
-    document.getElementById("date").textContent = item.date || "";
+    document.getElementById("count").textContent = history.length + " 条";
+    let html = "";
+    for (const item of history) {
+      html += '<div class="item">';
+      html += '<div class="text">' + (item.highlight || "") + '</div>';
+      html += '<div class="meta">';
+      html += '<div class="book-title">' + (item.title || "") + (item.author ? " · " + item.author : "") + '</div>';
+      html += '<div class="date">' + (item.date || "") + '</div>';
+      html += '</div></div>';
+    }
+    document.getElementById("content").innerHTML = html;
   } catch(e) {
     document.getElementById("content").innerHTML = '<div class="error">暂无内容</div>';
   }
 }
 loadContent();
-setInterval(loadContent, 5 * 60 * 1000);
 </script>
 </body>
 </html>
