@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阅读热力图</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+  background: #0d0d0d; color: #d0d0d0;
+  width: 100%; min-height: 100vh;
+}
+body { padding: 20px; max-width: 900px; margin: 0 auto; }
+
+.header {
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 16px;
+}
+.header h1 { font-size: 20px; font-weight: 600; color: #e8e8e8; margin-bottom: 8px; }
+.header .subtitle { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+.stats {
+  display: flex; gap: 24px; margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.stat-card {
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 100px;
+}
+.stat-card .label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+.stat-card .value { font-size: 22px; font-weight: 700; color: #39d353; }
+.stat-card .unit { font-size: 12px; color: rgba(255,255,255,0.5); }
+
+.heatmap-container {
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+.month-labels {
+  display: flex;
+  margin-left: 30px;
+  margin-bottom: 4px;
+}
+.month-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+}
+.heatmap {
+  display: flex;
+  gap: 3px;
+}
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.day-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-right: 4px;
+}
+.day-label {
+  height: 13px;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+}
+.cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+.cell:hover { outline: 1px solid rgba(255,255,255,0.5); }
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+}
+.legend-cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+}
+
+.footer {
+  text-align: center;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.footer a {
+  color: rgba(102,126,234,0.8);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+/* Tooltip */
+.tooltip {
+  display: none;
+  position: fixed;
+  background: #2d333b;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #e8e8e8;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📚 阅读热力图</h1>
+  <div class="subtitle">2025.06.03 — 2026.06.03</div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="label">总阅读时长</div>
+    <div class="value">207<span class="unit"> 小时</span></div>
+  </div>
+  <div class="stat-card">
+    <div class="label">阅读天数</div>
+    <div class="value">232<span class="unit"> 天</span></div>
+  </div>
+  <div class="stat-card">
+    <div class="label">连续阅读</div>
+    <div class="value">0<span class="unit"> 天</span></div>
+  </div>
+  <div class="stat-card">
+    <div class="label">日均时长</div>
+    <div class="value">53<span class="unit"> 分钟</span></div>
+  </div>
+</div>
+
+<div class="heatmap-container">
+  <div class="month-labels" id="monthLabels"></div>
+  <div style="display:flex;">
+    <div class="day-labels">
+      <div class="day-label">一</div>
+      <div class="day-label"></div>
+      <div class="day-label">三</div>
+      <div class="day-label"></div>
+      <div class="day-label">五</div>
+      <div class="day-label"></div>
+      <div class="day-label">日</div>
+    </div>
+    <div class="heatmap" id="heatmap"></div>
+  </div>
+  <div class="legend">
+    <span>少</span>
+    <div class="legend-cell" style="background:#161b22;"></div>
+    <div class="legend-cell" style="background:#0e4429;"></div>
+    <div class="legend-cell" style="background:#006d32;"></div>
+    <div class="legend-cell" style="background:#26a641;"></div>
+    <div class="legend-cell" style="background:#39d353;"></div>
+    <div class="legend-cell" style="background:#7fff7f;"></div>
+    <span>多</span>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="index.html">← 返回每日划线</a>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const weeks = [[{"date": "", "minutes": -1}, {"date": "2025-06-03", "minutes": 136}, {"date": "2025-06-04", "minutes": 194}, {"date": "2025-06-05", "minutes": 4}, {"date": "2025-06-06", "minutes": 1}, {"date": "2025-06-07", "minutes": 0}, {"date": "2025-06-08", "minutes": 80}], [{"date": "2025-06-09", "minutes": 79}, {"date": "2025-06-10", "minutes": 75}, {"date": "2025-06-11", "minutes": 2}, {"date": "2025-06-12", "minutes": 1}, {"date": "2025-06-13", "minutes": 2}, {"date": "2025-06-14", "minutes": 76}, {"date": "2025-06-15", "minutes": 11}], [{"date": "2025-06-16", "minutes": 172}, {"date": "2025-06-17", "minutes": 89}, {"date": "2025-06-18", "minutes": 30}, {"date": "2025-06-19", "minutes": 63}, {"date": "2025-06-20", "minutes": 0}, {"date": "2025-06-21", "minutes": 0}, {"date": "2025-06-22", "minutes": 10}], [{"date": "2025-06-23", "minutes": 1}, {"date": "2025-06-24", "minutes": 68}, {"date": "2025-06-25", "minutes": 12}, {"date": "2025-06-26", "minutes": 0}, {"date": "2025-06-27", "minutes": 17}, {"date": "2025-06-28", "minutes": 65}, {"date": "2025-06-29", "minutes": 70}], [{"date": "2025-06-30", "minutes": 49}, {"date": "2025-07-01", "minutes": 56}, {"date": "2025-07-02", "minutes": 63}, {"date": "2025-07-03", "minutes": 47}, {"date": "2025-07-04", "minutes": 50}, {"date": "2025-07-05", "minutes": 62}, {"date": "2025-07-06", "minutes": 0}], [{"date": "2025-07-07", "minutes": 44}, {"date": "2025-07-08", "minutes": 55}, {"date": "2025-07-09", "minutes": 33}, {"date": "2025-07-10", "minutes": 67}, {"date": "2025-07-11", "minutes": 27}, {"date": "2025-07-12", "minutes": 27}, {"date": "2025-07-13", "minutes": 32}], [{"date": "2025-07-14", "minutes": 44}, {"date": "2025-07-15", "minutes": 21}, {"date": "2025-07-16", "minutes": 23}, {"date": "2025-07-17", "minutes": 15}, {"date": "2025-07-18", "minutes": 0}, {"date": "2025-07-19", "minutes": 81}, {"date": "2025-07-20", "minutes": 0}], [{"date": "2025-07-21", "minutes": 0}, {"date": "2025-07-22", "minutes": 0}, {"date": "2025-07-23", "minutes": 6}, {"date": "2025-07-24", "minutes": 14}, {"date": "2025-07-25", "minutes": 130}, {"date": "2025-07-26", "minutes": 345}, {"date": "2025-07-27", "minutes": 166}], [{"date": "2025-07-28", "minutes": 74}, {"date": "2025-07-29", "minutes": 56}, {"date": "2025-07-30", "minutes": 14}, {"date": "2025-07-31", "minutes": 0}, {"date": "2025-08-01", "minutes": 12}, {"date": "2025-08-02", "minutes": 31}, {"date": "2025-08-03", "minutes": 28}], [{"date": "2025-08-04", "minutes": 7}, {"date": "2025-08-05", "minutes": 57}, {"date": "2025-08-06", "minutes": 90}, {"date": "2025-08-07", "minutes": 39}, {"date": "2025-08-08", "minutes": 39}, {"date": "2025-08-09", "minutes": 6}, {"date": "2025-08-10", "minutes": 9}], [{"date": "2025-08-11", "minutes": 25}, {"date": "2025-08-12", "minutes": 22}, {"date": "2025-08-13", "minutes": 26}, {"date": "2025-08-14", "minutes": 41}, {"date": "2025-08-15", "minutes": 3}, {"date": "2025-08-16", "minutes": 1}, {"date": "2025-08-17", "minutes": 1}], [{"date": "2025-08-18", "minutes": 1}, {"date": "2025-08-19", "minutes": 0}, {"date": "2025-08-20", "minutes": 61}, {"date": "2025-08-21", "minutes": 0}, {"date": "2025-08-22", "minutes": 0}, {"date": "2025-08-23", "minutes": 25}, {"date": "2025-08-24", "minutes": 0}], [{"date": "2025-08-25", "minutes": 0}, {"date": "2025-08-26", "minutes": 72}, {"date": "2025-08-27", "minutes": 0}, {"date": "2025-08-28", "minutes": 0}, {"date": "2025-08-29", "minutes": 0}, {"date": "2025-08-30", "minutes": 8}, {"date": "2025-08-31", "minutes": 10}], [{"date": "2025-09-01", "minutes": 17}, {"date": "2025-09-02", "minutes": 0}, {"date": "2025-09-03", "minutes": 160}, {"date": "2025-09-04", "minutes": 7}, {"date": "2025-09-05", "minutes": 70}, {"date": "2025-09-06", "minutes": 0}, {"date": "2025-09-07", "minutes": 21}], [{"date": "2025-09-08", "minutes": 31}, {"date": "2025-09-09", "minutes": 33}, {"date": "2025-09-10", "minutes": 57}, {"date": "2025-09-11", "minutes": 1}, {"date": "2025-09-12", "minutes": 0}, {"date": "2025-09-13", "minutes": 2}, {"date": "2025-09-14", "minutes": 0}], [{"date": "2025-09-15", "minutes": 6}, {"date": "2025-09-16", "minutes": 93}, {"date": "2025-09-17", "minutes": 3}, {"date": "2025-09-18", "minutes": 107}, {"date": "2025-09-19", "minutes": 88}, {"date": "2025-09-20", "minutes": 21}, {"date": "2025-09-21", "minutes": 1}], [{"date": "2025-09-22", "minutes": 0}, {"date": "2025-09-23", "minutes": 162}, {"date": "2025-09-24", "minutes": 45}, {"date": "2025-09-25", "minutes": 0}, {"date": "2025-09-26", "minutes": 2}, {"date": "2025-09-27", "minutes": 0}, {"date": "2025-09-28", "minutes": 3}], [{"date": "2025-09-29", "minutes": 0}, {"date": "2025-09-30", "minutes": 0}, {"date": "2025-10-01", "minutes": 0}, {"date": "2025-10-02", "minutes": 0}, {"date": "2025-10-03", "minutes": 0}, {"date": "2025-10-04", "minutes": 0}, {"date": "2025-10-05", "minutes": 0}], [{"date": "2025-10-06", "minutes": 4}, {"date": "2025-10-07", "minutes": 0}, {"date": "2025-10-08", "minutes": 0}, {"date": "2025-10-09", "minutes": 3}, {"date": "2025-10-10", "minutes": 0}, {"date": "2025-10-11", "minutes": 46}, {"date": "2025-10-12", "minutes": 23}], [{"date": "2025-10-13", "minutes": 0}, {"date": "2025-10-14", "minutes": 0}, {"date": "2025-10-15", "minutes": 0}, {"date": "2025-10-16", "minutes": 7}, {"date": "2025-10-17", "minutes": 0}, {"date": "2025-10-18", "minutes": 0}, {"date": "2025-10-19", "minutes": 0}], [{"date": "2025-10-20", "minutes": 15}, {"date": "2025-10-21", "minutes": 5}, {"date": "2025-10-22", "minutes": 0}, {"date": "2025-10-23", "minutes": 6}, {"date": "2025-10-24", "minutes": 0}, {"date": "2025-10-25", "minutes": 0}, {"date": "2025-10-26", "minutes": 0}], [{"date": "2025-10-27", "minutes": 0}, {"date": "2025-10-28", "minutes": 0}, {"date": "2025-10-29", "minutes": 0}, {"date": "2025-10-30", "minutes": 0}, {"date": "2025-10-31", "minutes": 0}, {"date": "2025-11-01", "minutes": 0}, {"date": "2025-11-02", "minutes": 0}], [{"date": "2025-11-03", "minutes": 0}, {"date": "2025-11-04", "minutes": 0}, {"date": "2025-11-05", "minutes": 0}, {"date": "2025-11-06", "minutes": 0}, {"date": "2025-11-07", "minutes": 0}, {"date": "2025-11-08", "minutes": 0}, {"date": "2025-11-09", "minutes": 0}], [{"date": "2025-11-10", "minutes": 0}, {"date": "2025-11-11", "minutes": 0}, {"date": "2025-11-12", "minutes": 0}, {"date": "2025-11-13", "minutes": 0}, {"date": "2025-11-14", "minutes": 0}, {"date": "2025-11-15", "minutes": 0}, {"date": "2025-11-16", "minutes": 0}], [{"date": "2025-11-17", "minutes": 0}, {"date": "2025-11-18", "minutes": 13}, {"date": "2025-11-19", "minutes": 0}, {"date": "2025-11-20", "minutes": 0}, {"date": "2025-11-21", "minutes": 0}, {"date": "2025-11-22", "minutes": 0}, {"date": "2025-11-23", "minutes": 0}], [{"date": "2025-11-24", "minutes": 0}, {"date": "2025-11-25", "minutes": 0}, {"date": "2025-11-26", "minutes": 0}, {"date": "2025-11-27", "minutes": 2}, {"date": "2025-11-28", "minutes": 0}, {"date": "2025-11-29", "minutes": 0}, {"date": "2025-11-30", "minutes": 0}], [{"date": "2025-12-01", "minutes": 0}, {"date": "2025-12-02", "minutes": 0}, {"date": "2025-12-03", "minutes": 0}, {"date": "2025-12-04", "minutes": 0}, {"date": "2025-12-05", "minutes": 0}, {"date": "2025-12-06", "minutes": 0}, {"date": "2025-12-07", "minutes": 0}], [{"date": "2025-12-08", "minutes": 0}, {"date": "2025-12-09", "minutes": 0}, {"date": "2025-12-10", "minutes": 0}, {"date": "2025-12-11", "minutes": 0}, {"date": "2025-12-12", "minutes": 0}, {"date": "2025-12-13", "minutes": 68}, {"date": "2025-12-14", "minutes": 50}], [{"date": "2025-12-15", "minutes": 49}, {"date": "2025-12-16", "minutes": 39}, {"date": "2025-12-17", "minutes": 123}, {"date": "2025-12-18", "minutes": 0}, {"date": "2025-12-19", "minutes": 79}, {"date": "2025-12-20", "minutes": 30}, {"date": "2025-12-21", "minutes": 20}], [{"date": "2025-12-22", "minutes": 0}, {"date": "2025-12-23", "minutes": 23}, {"date": "2025-12-24", "minutes": 15}, {"date": "2025-12-25", "minutes": 8}, {"date": "2025-12-26", "minutes": 0}, {"date": "2025-12-27", "minutes": 50}, {"date": "2025-12-28", "minutes": 0}], [{"date": "2025-12-29", "minutes": 0}, {"date": "2025-12-30", "minutes": 0}, {"date": "2025-12-31", "minutes": 0}, {"date": "2026-01-01", "minutes": 0}, {"date": "2026-01-02", "minutes": 46}, {"date": "2026-01-03", "minutes": 39}, {"date": "2026-01-04", "minutes": 57}], [{"date": "2026-01-05", "minutes": 25}, {"date": "2026-01-06", "minutes": 65}, {"date": "2026-01-07", "minutes": 15}, {"date": "2026-01-08", "minutes": 0}, {"date": "2026-01-09", "minutes": 45}, {"date": "2026-01-10", "minutes": 45}, {"date": "2026-01-11", "minutes": 35}], [{"date": "2026-01-12", "minutes": 0}, {"date": "2026-01-13", "minutes": 1}, {"date": "2026-01-14", "minutes": 18}, {"date": "2026-01-15", "minutes": 36}, {"date": "2026-01-16", "minutes": 44}, {"date": "2026-01-17", "minutes": 0}, {"date": "2026-01-18", "minutes": 30}], [{"date": "2026-01-19", "minutes": 35}, {"date": "2026-01-20", "minutes": 126}, {"date": "2026-01-21", "minutes": 149}, {"date": "2026-01-22", "minutes": 39}, {"date": "2026-01-23", "minutes": 0}, {"date": "2026-01-24", "minutes": 33}, {"date": "2026-01-25", "minutes": 0}], [{"date": "2026-01-26", "minutes": 29}, {"date": "2026-01-27", "minutes": 0}, {"date": "2026-01-28", "minutes": 34}, {"date": "2026-01-29", "minutes": 13}, {"date": "2026-01-30", "minutes": 266}, {"date": "2026-01-31", "minutes": 37}, {"date": "2026-02-01", "minutes": 25}], [{"date": "2026-02-02", "minutes": 5}, {"date": "2026-02-03", "minutes": 12}, {"date": "2026-02-04", "minutes": 0}, {"date": "2026-02-05", "minutes": 0}, {"date": "2026-02-06", "minutes": 0}, {"date": "2026-02-07", "minutes": 0}, {"date": "2026-02-08", "minutes": 5}], [{"date": "2026-02-09", "minutes": 154}, {"date": "2026-02-10", "minutes": 0}, {"date": "2026-02-11", "minutes": 2}, {"date": "2026-02-12", "minutes": 0}, {"date": "2026-02-13", "minutes": 3}, {"date": "2026-02-14", "minutes": 0}, {"date": "2026-02-15", "minutes": 0}], [{"date": "2026-02-16", "minutes": 0}, {"date": "2026-02-17", "minutes": 0}, {"date": "2026-02-18", "minutes": 0}, {"date": "2026-02-19", "minutes": 0}, {"date": "2026-02-20", "minutes": 0}, {"date": "2026-02-21", "minutes": 0}, {"date": "2026-02-22", "minutes": 85}], [{"date": "2026-02-23", "minutes": 25}, {"date": "2026-02-24", "minutes": 0}, {"date": "2026-02-25", "minutes": 65}, {"date": "2026-02-26", "minutes": 78}, {"date": "2026-02-27", "minutes": 70}, {"date": "2026-02-28", "minutes": 100}, {"date": "2026-03-01", "minutes": 5}], [{"date": "2026-03-02", "minutes": 12}, {"date": "2026-03-03", "minutes": 8}, {"date": "2026-03-04", "minutes": 23}, {"date": "2026-03-05", "minutes": 0}, {"date": "2026-03-06", "minutes": 1}, {"date": "2026-03-07", "minutes": 141}, {"date": "2026-03-08", "minutes": 151}], [{"date": "2026-03-09", "minutes": 0}, {"date": "2026-03-10", "minutes": 0}, {"date": "2026-03-11", "minutes": 1}, {"date": "2026-03-12", "minutes": 0}, {"date": "2026-03-13", "minutes": 10}, {"date": "2026-03-14", "minutes": 0}, {"date": "2026-03-15", "minutes": 0}], [{"date": "2026-03-16", "minutes": 0}, {"date": "2026-03-17", "minutes": 6}, {"date": "2026-03-18", "minutes": 0}, {"date": "2026-03-19", "minutes": 33}, {"date": "2026-03-20", "minutes": 0}, {"date": "2026-03-21", "minutes": 161}, {"date": "2026-03-22", "minutes": 141}], [{"date": "2026-03-23", "minutes": 71}, {"date": "2026-03-24", "minutes": 114}, {"date": "2026-03-25", "minutes": 69}, {"date": "2026-03-26", "minutes": 35}, {"date": "2026-03-27", "minutes": 141}, {"date": "2026-03-28", "minutes": 138}, {"date": "2026-03-29", "minutes": 218}], [{"date": "2026-03-30", "minutes": 64}, {"date": "2026-03-31", "minutes": 54}, {"date": "2026-04-01", "minutes": 51}, {"date": "2026-04-02", "minutes": 16}, {"date": "2026-04-03", "minutes": 90}, {"date": "2026-04-04", "minutes": 120}, {"date": "2026-04-05", "minutes": 26}], [{"date": "2026-04-06", "minutes": 213}, {"date": "2026-04-07", "minutes": 35}, {"date": "2026-04-08", "minutes": 11}, {"date": "2026-04-09", "minutes": 104}, {"date": "2026-04-10", "minutes": 23}, {"date": "2026-04-11", "minutes": 71}, {"date": "2026-04-12", "minutes": 34}], [{"date": "2026-04-13", "minutes": 83}, {"date": "2026-04-14", "minutes": 15}, {"date": "2026-04-15", "minutes": 3}, {"date": "2026-04-16", "minutes": 20}, {"date": "2026-04-17", "minutes": 18}, {"date": "2026-04-18", "minutes": 1}, {"date": "2026-04-19", "minutes": 3}], [{"date": "2026-04-20", "minutes": 25}, {"date": "2026-04-21", "minutes": 35}, {"date": "2026-04-22", "minutes": 144}, {"date": "2026-04-23", "minutes": 47}, {"date": "2026-04-24", "minutes": 235}, {"date": "2026-04-25", "minutes": 99}, {"date": "2026-04-26", "minutes": 78}], [{"date": "2026-04-27", "minutes": 98}, {"date": "2026-04-28", "minutes": 23}, {"date": "2026-04-29", "minutes": 87}, {"date": "2026-04-30", "minutes": 143}, {"date": "2026-05-01", "minutes": 111}, {"date": "2026-05-02", "minutes": 164}, {"date": "2026-05-03", "minutes": 62}], [{"date": "2026-05-04", "minutes": 1}, {"date": "2026-05-05", "minutes": 55}, {"date": "2026-05-06", "minutes": 73}, {"date": "2026-05-07", "minutes": 41}, {"date": "2026-05-08", "minutes": 105}, {"date": "2026-05-09", "minutes": 85}, {"date": "2026-05-10", "minutes": 74}], [{"date": "2026-05-11", "minutes": 64}, {"date": "2026-05-12", "minutes": 38}, {"date": "2026-05-13", "minutes": 3}, {"date": "2026-05-14", "minutes": 0}, {"date": "2026-05-15", "minutes": 19}, {"date": "2026-05-16", "minutes": 108}, {"date": "2026-05-17", "minutes": 76}], [{"date": "2026-05-18", "minutes": 41}, {"date": "2026-05-19", "minutes": 0}, {"date": "2026-05-20", "minutes": 1}, {"date": "2026-05-21", "minutes": 16}, {"date": "2026-05-22", "minutes": 211}, {"date": "2026-05-23", "minutes": 42}, {"date": "2026-05-24", "minutes": 59}], [{"date": "2026-05-25", "minutes": 251}, {"date": "2026-05-26", "minutes": 78}, {"date": "2026-05-27", "minutes": 87}, {"date": "2026-05-28", "minutes": 9}, {"date": "2026-05-29", "minutes": 1}, {"date": "2026-05-30", "minutes": 2}, {"date": "2026-05-31", "minutes": 0}], [{"date": "2026-06-01", "minutes": 0}, {"date": "2026-06-02", "minutes": 0}, {"date": "2026-06-03", "minutes": 0}, {"date": "", "minutes": -1}, {"date": "", "minutes": -1}, {"date": "", "minutes": -1}, {"date": "", "minutes": -1}]];
+const monthLabels = [{"col": 4, "month": "07"}, {"col": 8, "month": "08"}, {"col": 13, "month": "09"}, {"col": 17, "month": "10"}, {"col": 21, "month": "11"}, {"col": 26, "month": "12"}, {"col": 30, "month": "01"}, {"col": 34, "month": "02"}, {"col": 38, "month": "03"}, {"col": 43, "month": "04"}, {"col": 47, "month": "05"}, {"col": 52, "month": "06"}];
+
+function getColor(minutes) {
+  if (minutes < 0) return '#1a1a1a';
+  if (minutes === 0) return '#161b22';
+  if (minutes < 15) return '#0e4429';
+  if (minutes < 30) return '#006d32';
+  if (minutes < 60) return '#26a641';
+  if (minutes < 120) return '#39d353';
+  return '#7fff7f';
+}
+
+const heatmap = document.getElementById('heatmap');
+const tooltip = document.getElementById('tooltip');
+
+weeks.forEach(week => {
+  const weekEl = document.createElement('div');
+  weekEl.className = 'week';
+  week.forEach(day => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.style.background = getColor(day.minutes);
+    if (day.date) {
+      cell.addEventListener('mouseenter', (e) => {
+        const mins = day.minutes;
+        const hours = (mins / 60).toFixed(1);
+        tooltip.innerHTML = `<strong>${day.date}</strong><br>${mins > 0 ? mins + ' 分钟 (' + hours + ' 小时)' : '未阅读'}`;
+        tooltip.style.display = 'block';
+        tooltip.style.left = (e.clientX + 12) + 'px';
+        tooltip.style.top = (e.clientY - 40) + 'px';
+      });
+      cell.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+    }
+    weekEl.appendChild(cell);
+  });
+  heatmap.appendChild(weekEl);
+});
+
+// Month labels
+const monthLabelsEl = document.getElementById('monthLabels');
+const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+let lastCol = -10;
+monthLabels.forEach(ml => {
+  const span = document.createElement('span');
+  span.className = 'month-label';
+  span.textContent = monthNames[parseInt(ml.month) - 1];
+  span.style.marginLeft = ((ml.col - lastCol) * 16 - 10) + 'px';
+  monthLabelsEl.appendChild(span);
+  lastCol = ml.col;
+});
+</script>
+</body>
+</html>
